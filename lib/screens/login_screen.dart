@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,36 +10,54 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  bool isLoading = false;
-  String? errorMsg;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _loading = false;
+  String? _error;
 
-  Future<void> _signIn() async {
-    setState(() => isLoading = true);
-    try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: emailCtrl.text.trim(),
-        password: passCtrl.text.trim(),
-      );
-    } on AuthException catch (e) {
-      setState(() => errorMsg = e.message);
-    } finally {
-      setState(() => isLoading = false);
-    }
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔁 Listen to Supabase auth state changes to auto-navigate
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final session = data.session;
+      if (session != null && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      }
+    });
   }
 
-  Future<void> _signUp() async {
-    setState(() => isLoading = true);
+  Future<void> _signIn() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
     try {
-      await Supabase.instance.client.auth.signUp(
-        email: emailCtrl.text.trim(),
-        password: passCtrl.text.trim(),
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
+
+      final session = response.session;
+      if (session != null && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      } else {
+        setState(() => _error = 'Échec de la connexion. Vérifiez vos identifiants.');
+      }
     } on AuthException catch (e) {
-      setState(() => errorMsg = e.message);
+      setState(() => _error = e.message);
+    } catch (e) {
+      setState(() => _error = 'Erreur: $e');
     } finally {
-      setState(() => isLoading = false);
+      setState(() => _loading = false);
     }
   }
 
@@ -46,28 +65,53 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('CMMS Login', style: TextStyle(fontSize: 22)),
-              const SizedBox(height: 20),
-              TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email')),
-              const SizedBox(height: 10),
-              TextField(controller: passCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
-              const SizedBox(height: 20),
-              if (errorMsg != null)
-                Text(errorMsg!, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 20),
-              if (isLoading) const CircularProgressIndicator(),
-              if (!isLoading)
-                Column(
-                  children: [
-                    ElevatedButton(onPressed: _signIn, child: const Text('Login')),
-                    TextButton(onPressed: _signUp, child: const Text('Sign Up')),
-                  ],
+              const Text(
+                'Connexion à la plateforme de maintenance',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Adresse e-mail',
+                  border: OutlineInputBorder(),
                 ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Mot de passe',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _signIn,
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Se connecter'),
+                ),
+              ),
             ],
           ),
         ),

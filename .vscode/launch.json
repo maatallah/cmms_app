@@ -1,0 +1,32 @@
+{
+  // Launch configurations for Flutter Web
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Flutter Web (Chrome, no breakpoints)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "-d",
+        "chrome"
+      ],
+      "args": [],
+      "flutterMode": "debug",
+      "noDebug": true,
+      "console": "terminal"
+    },
+    {
+      "name": "Run Flutter Web (Chrome, with debugger)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "-d",
+        "chrome"
+      ],
+      "flutterMode": "debug",
+      "console": "terminal"
+    }
+  ]
+}
