@@ -1,46 +1,26 @@
-import 'dart:async';
-import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../screens/login_screen.dart';
-import '../screens/dashboard_screen.dart';
 
-class SessionManager extends StatefulWidget {
-  final Session? initialSession;
-  const SessionManager({super.key, this.initialSession});
+class SessionManager {
+  static const _sessionKey = 'session';
 
-  @override
-  State<SessionManager> createState() => _SessionManagerState();
-}
-
-class _SessionManagerState extends State<SessionManager> {
-  late final StreamSubscription<AuthState> _authSub;
-  late Widget _child;
-
-  @override
-  void initState() {
-    super.initState();
-    _child = widget.initialSession == null
-        ? const LoginScreen()
-        : const DashboardScreen();
-
-    _authSub =
-        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final session = data.session;
-      setState(() {
-        _child =
-            session == null ? const LoginScreen() : const DashboardScreen();
-      });
-    });
+  Future<void> saveSession(Session session) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_sessionKey, jsonEncode(session.toJson()));
   }
 
-  @override
-  void dispose() {
-    _authSub.cancel();
-    super.dispose();
+  Future<Session?> getSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_sessionKey);
+    if (jsonString == null) return null;
+
+    final map = jsonDecode(jsonString);
+    return Session.fromJson(map);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return _child;
+  Future<void> clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sessionKey);
   }
 }

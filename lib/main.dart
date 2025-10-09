@@ -1,13 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/session_manager.dart';
+import 'screens/login_screen.dart';
+import 'screens/dashboard_screen.dart';
 import 'supabase_client.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initSupabase();
 
-  // ✅ Supabase auto-restores the session now.
+  // ✅ Supabase auto-restores the session now
   final session = Supabase.instance.client.auth.currentSession;
 
   runApp(CMMSApp(initialSession: session));
@@ -23,8 +26,12 @@ class CMMSApp extends StatelessWidget {
       title: 'CMMS App',
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
-      home: SessionManager(initialSession: initialSession),
       debugShowCheckedModeBanner: false,
+
+      // ✅ Show the correct screen depending on login status
+      home: initialSession != null
+          ? const DashboardScreen()
+          : const LoginScreen(),
     );
   }
 }

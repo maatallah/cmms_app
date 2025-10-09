@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../supabase_client.dart';
 import '../services/session_manager.dart';
 import '../widgets/dashboard_card.dart';
 import 'assets_screen.dart';
@@ -17,180 +16,196 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final SupabaseClient supabase = Supabase.instance.client;
-  final SessionManager _sessionManager = SessionManager();
+  final supabase = Supabase.instance.client;
+  final _sessionManager = SessionManager();
 
-  String userEmail = '';
-  int nbAssets = 0;
-  int nbWorkOrders = 0;
-  int nbInventoryItems = 0;
+  late RealtimeChannel _assetsChannel;
+  late RealtimeChannel _workOrdersChannel;
+  late RealtimeChannel _inventoryChannel;
+
+  int _assetsCount = 0;
+  int _workOrdersCount = 0;
+  int _inventoryCount = 0;
+
+  int _selectedIndex = 0;
+
+  final List<Widget> _screens = const [
+    AssetsScreen(),
+    WorkOrdersScreen(),
+    InventoryScreen(),
+    ReportsScreen(),
+  ];
 
   @override
   void initState() {
     super.initState();
-    final session = supabase.auth.currentSession;
-    userEmail = session?.user.email ?? 'Utilisateur';
     _loadDashboardData();
+    _initRealtimeSubscriptions();
+  }
+
+  @override
+  void dispose() {
+    _assetsChannel.unsubscribe();
+    _workOrdersChannel.unsubscribe();
+    _inventoryChannel.unsubscribe();
+    super.dispose();
   }
 
   Future<void> _loadDashboardData() async {
     try {
-      final assetsResponse = await supabase.from('assets').select('id');
-      final workOrdersResponse = await supabase.from('work_orders').select('id');
-      final inventoryResponse = await supabase.from('inventory').select('id');
+      final assetsResponse = await supabase.from('assets').select();
+      final workOrdersResponse = await supabase.from('work_orders').select();
+      final inventoryResponse = await supabase.from('inventory').select();
 
       setState(() {
-        nbAssets = assetsResponse.length;
-        nbWorkOrders = workOrdersResponse.length;
-        nbInventoryItems = inventoryResponse.length;
+        _assetsCount = assetsResponse.length;
+        _workOrdersCount = workOrdersResponse.length;
+        _inventoryCount = inventoryResponse.length;
       });
     } catch (e) {
-      debugPrint('Erreur lors du chargement des données : $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Erreur de chargement des données.")),
-      );
+      debugPrint('Erreur de chargement du tableau de bord : $e');
     }
+  }
+
+  void _initRealtimeSubscriptions() {
+    _assetsChannel = supabase.channel('public:assets')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'assets',
+        callback: (payload) {
+          debugPrint('🔁 Changement détecté sur assets');
+          _loadDashboardData();
+        },
+      )
+      ..subscribe();
+
+    _workOrdersChannel = supabase.channel('public:work_orders')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'work_orders',
+        callback: (payload) {
+          debugPrint('🔁 Changement détecté sur work_orders');
+          _loadDashboardData();
+        },
+      )
+      ..subscribe();
+
+    _inventoryChannel = supabase.channel('public:inventory')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'inventory',
+        callback: (payload) {
+          debugPrint('🔁 Changement détecté sur inventory');
+          _loadDashboardData();
+        },
+      )
+      ..subscribe();
   }
 
   Future<void> _logout() async {
     await _sessionManager.clearSession();
+    await supabase.auth.signOut();
     if (mounted) {
-      Navigator.pushAndRemoveUntil(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Tableau de bord CMMS"),
+        title: const Text('Tableau de bord CMMS'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: "Actualiser",
             onPressed: _loadDashboardData,
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: "Se déconnecter",
             onPressed: _logout,
           ),
         ],
       ),
-      drawer: _buildDrawer(context, colorScheme),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: GridView.count(
-          crossAxisCount: MediaQuery.of(context).size.width > 700 ? 4 : 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
           children: [
-            DashboardCard(
-              icon: Icons.precision_manufacturing,
-              title: "Équipements",
-              value: "$nbAssets",
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AssetsScreen()),
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.blueAccent),
+              child: Text(
+                'Menu principal',
+                style: TextStyle(color: Colors.white, fontSize: 20),
               ),
             ),
-            DashboardCard(
-              icon: Icons.assignment,
-              title: "Ordres de travail",
-              value: "$nbWorkOrders",
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const WorkOrdersScreen()),
-              ),
+            ListTile(
+              leading: const Icon(Icons.devices),
+              title: const Text('Équipements'),
+              selected: _selectedIndex == 0,
+              onTap: () => _onItemTapped(0),
             ),
-            DashboardCard(
-              icon: Icons.inventory,
-              title: "Inventaire",
-              value: "$nbInventoryItems",
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const InventoryScreen()),
-              ),
+            ListTile(
+              leading: const Icon(Icons.assignment),
+              title: const Text('Ordres de travail'),
+              selected: _selectedIndex == 1,
+              onTap: () => _onItemTapped(1),
             ),
-            DashboardCard(
-              icon: Icons.bar_chart,
-              title: "Rapports",
-              value: "—",
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ReportsScreen()),
-              ),
+            ListTile(
+              leading: const Icon(Icons.inventory),
+              title: const Text('Inventaire'),
+              selected: _selectedIndex == 2,
+              onTap: () => _onItemTapped(2),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Rapports'),
+              selected: _selectedIndex == 3,
+              onTap: () => _onItemTapped(3),
             ),
           ],
         ),
       ),
+      body: _selectedIndex == 0
+          ? _buildDashboardView()
+          : _screens[_selectedIndex],
     );
   }
 
-  Drawer _buildDrawer(BuildContext context, ColorScheme colorScheme) {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
+  void _onItemTapped(int index) {
+    Navigator.pop(context); // ferme le Drawer
+    setState(() => _selectedIndex = index);
+  }
+
+  Widget _buildDashboardView() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: GridView.count(
+        crossAxisCount: MediaQuery.of(context).size.width < 600 ? 1 : 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
         children: [
-          DrawerHeader(
-            decoration: BoxDecoration(color: colorScheme.primary),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Bienvenue,',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  userEmail,
-                  style: const TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ],
-            ),
+          DashboardCard(
+            title: 'Équipements',
+            count: _assetsCount,
+            icon: Icons.devices,
+            color: Colors.blue.shade400,
           ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Tableau de bord'),
-            onTap: () => Navigator.pop(context),
+          DashboardCard(
+            title: 'Ordres de travail',
+            count: _workOrdersCount,
+            icon: Icons.assignment,
+            color: Colors.orange.shade400,
           ),
-          ListTile(
-            leading: const Icon(Icons.precision_manufacturing),
-            title: const Text('Équipements'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AssetsScreen()),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.assignment),
-            title: const Text('Ordres de travail'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const WorkOrdersScreen()),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.inventory),
-            title: const Text('Inventaire'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const InventoryScreen()),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.bar_chart),
-            title: const Text('Rapports'),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ReportsScreen()),
-            ),
+          DashboardCard(
+            title: 'Inventaire',
+            count: _inventoryCount,
+            icon: Icons.inventory,
+            color: Colors.green.shade400,
           ),
         ],
       ),
