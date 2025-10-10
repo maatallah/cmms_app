@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../screens/dashboard_screen.dart';
+import 'dashboard_screen.dart';
+import 'work_orders_screen.dart';
+import 'inventory_screen.dart';
+import 'assets_screen.dart';
+import 'parameters_screen.dart';
 import '../services/session_manager.dart';
-import '../screens/login_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -13,98 +15,66 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
-  late final List<_Page> _pages;
 
-  @override
-  void initState() {
-    super.initState();
-    _pages = [
-      _Page('Tableau de bord', Icons.dashboard, const DashboardScreen()),
-      _Page('Ordres de travail', Icons.build, const Placeholder()),
-      _Page('Inventaire', Icons.inventory, const Placeholder()),
-      _Page('Paramètres', Icons.settings, const Placeholder()),
-    ];
+  final List<Widget> _screens = const [
+    DashboardScreen(),
+    WorkOrdersScreen(),
+    InventoryScreen(),
+    AssetsScreen(),
+    ParametersScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   Future<void> _logout() async {
-    try {
-      await Supabase.instance.client.auth.signOut();
-      await SessionManager().clearSavedSession();
-
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (_) => false,
-        );
-      }
-    } catch (e) {
-      debugPrint("Erreur de déconnexion : $e");
+    await SessionManager().clearSavedSession();
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 800;
-
-    final body = _pages[_selectedIndex].widget;
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_pages[_selectedIndex].title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Se déconnecter',
-            onPressed: _logout,
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment),
+            label: 'Work Orders',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory),
+            label: 'Inventory',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.build),
+            label: 'Assets',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Parameters',
           ),
         ],
       ),
-      body: Row(
-        children: [
-          if (isDesktop)
-            NavigationRail(
-              extended: true,
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (index) {
-                setState(() => _selectedIndex = index);
-              },
-              destinations: _pages
-                  .map(
-                    (page) => NavigationRailDestination(
-                      icon: Icon(page.icon),
-                      label: Text(page.title),
-                    ),
-                  )
-                  .toList(),
-            ),
-          Expanded(child: body),
-        ],
-      ),
-      bottomNavigationBar: isDesktop
-          ? null
-          : NavigationBar(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (index) {
-                setState(() => _selectedIndex = index);
-              },
-              destinations: _pages
-                  .map(
-                    (page) => NavigationDestination(
-                      icon: Icon(page.icon),
-                      label: page.title,
-                    ),
-                  )
-                  .toList(),
-            ),
+      floatingActionButton: _selectedIndex == 0
+          ? FloatingActionButton(
+              onPressed: _logout,
+              backgroundColor: Colors.red,
+              child: const Icon(Icons.logout),
+            )
+          : null,
     );
   }
-}
-
-class _Page {
-  final String title;
-  final IconData icon;
-  final Widget widget;
-
-  const _Page(this.title, this.icon, this.widget);
 }
