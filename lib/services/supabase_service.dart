@@ -1,50 +1,76 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:cmms_app/models/user.dart' as app_models;
-import 'package:cmms_app/models/asset.dart';
-import 'package:cmms_app/models/inventory.dart';
-import 'package:cmms_app/models/work_order.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
+import '../models/user.dart';
+import '../models/asset.dart';
+import '../models/work_order.dart';
+import '../models/inventory_item.dart';
 
 class SupabaseService {
-  final SupabaseClient _client = Supabase.instance.client;
+  final supa.SupabaseClient _client = supa.Supabase.instance.client;
 
-  // ================= USERS =================
-  Future<List<app_models.User>> getUsers() async {
-    final response = await _client.from('users').select();
-    return (response as List)
-        .map((e) => app_models.User.fromJson(Map<String, dynamic>.from(e)))
+  // ---------------- Users ----------------
+  Future<List<User>> getUsers() async {
+    final response = await _client.from('users').select().get();
+    if (response.error != null) {
+      throw response.error!;
+    }
+    return (response.data as List)
+        .map((e) => User.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 
-  // ================= ASSETS =================
+  // ---------------- Assets ----------------
   Future<List<Asset>> getAssets() async {
-    final response = await _client
-        .from('assets')
-        .select()
-        .order('created_at', ascending: false);
-    return (response as List)
+    final response = await _client.from('assets').select().get();
+    if (response.error != null) throw response.error!;
+    return (response.data as List)
         .map((e) => Asset.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 
-  // ================= INVENTORY =================
-  Future<List<Inventory>> getInventory() async {
-    final response = await _client
-        .from('inventory')
-        .select()
-        .order('created_at', ascending: false);
-    return (response as List)
-        .map((e) => Inventory.fromJson(Map<String, dynamic>.from(e)))
+  // ---------------- Work Orders ----------------
+  Future<List<WorkOrder>> getWorkOrders() async {
+    final response = await _client.from('work_orders').select().get();
+    if (response.error != null) throw response.error!;
+    return (response.data as List)
+        .map((e) => WorkOrder.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
 
-  // ================= WORK ORDERS =================
-  Future<List<WorkOrder>> getWorkOrders() async {
-    final response = await _client
-        .from('work_orders')
-        .select()
-        .order('created_at', ascending: false);
-    return (response as List)
-        .map((e) => WorkOrder.fromJson(Map<String, dynamic>.from(e)))
+  // ---------------- Inventory ----------------
+  Future<List<InventoryItem>> getInventory() async {
+    final response = await _client.from('inventory').select().get();
+    if (response.error != null) throw response.error!;
+    return (response.data as List)
+        .map((e) => InventoryItem.fromJson(Map<String, dynamic>.from(e)))
         .toList();
+  }
+
+  // ---------------- Count helpers ----------------
+  Future<int> getUsersCount() async {
+    final response =
+        await _client.from('users').select('id', count: 'exact').get();
+    if (response.error != null) throw response.error!;
+    return response.count ?? 0;
+  }
+
+  Future<int> getAssetsCount() async {
+    final response =
+        await _client.from('assets').select('id', count: 'exact').get();
+    if (response.error != null) throw response.error!;
+    return response.count ?? 0;
+  }
+
+  Future<int> getWorkOrdersCount() async {
+    final response =
+        await _client.from('work_orders').select('id', count: 'exact').get();
+    if (response.error != null) throw response.error!;
+    return response.count ?? 0;
+  }
+
+  Future<int> getInventoryCount() async {
+    final response =
+        await _client.from('inventory').select('id', count: 'exact').get();
+    if (response.error != null) throw response.error!;
+    return response.count ?? 0;
   }
 }
