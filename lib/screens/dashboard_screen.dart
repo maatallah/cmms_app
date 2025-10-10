@@ -1,104 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/session_manager.dart';
-import '../widgets/dashboard_card.dart';
-import 'login_screen.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  final supabase = Supabase.instance.client;
-  final _sessionManager = SessionManager();
-
-  int _assetsCount = 0;
-  int _workOrdersCount = 0;
-  int _inventoryCount = 0;
-  bool _isMounted = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    try {
-      final assets = await supabase.from('assets').select();
-      final workOrders = await supabase.from('work_orders').select();
-      final inventory = await supabase.from('inventory').select();
-
-      if (!_isMounted) return;
-
-      setState(() {
-        _assetsCount = assets.length;
-        _workOrdersCount = workOrders.length;
-        _inventoryCount = inventory.length;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur de chargement du tableau de bord : $e')),
-        );
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _isMounted = false;
-    super.dispose();
-  }
-
-  Future<void> _logout() async {
-    await supabase.auth.signOut();
-    await _sessionManager.clear();
-
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: GridView.count(
+        crossAxisCount: MediaQuery.of(context).size.width > 800 ? 3 : 1,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        children: const [
+          _DashboardCard(title: 'Équipements', value: '42'),
+          _DashboardCard(title: 'Ordres de travail', value: '18'),
+          _DashboardCard(title: 'Inventaire', value: '127'),
+        ],
+      ),
     );
   }
+}
+
+class _DashboardCard extends StatelessWidget {
+  final String title;
+  final String value;
+
+  const _DashboardCard({required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tableau de bord'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            DashboardCard(
-              title: 'Équipements',
-              count: _assetsCount,
-              icon: Icons.precision_manufacturing,
-              onTap: () {},
-            ),
-            DashboardCard(
-              title: 'Ordres de travail',
-              count: _workOrdersCount,
-              icon: Icons.build,
-              onTap: () {},
-            ),
-            DashboardCard(
-              title: 'Inventaire',
-              count: _inventoryCount,
-              icon: Icons.inventory,
-              onTap: () {},
-            ),
+            Text(title, style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 8),
+            Text(value,
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

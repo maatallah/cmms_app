@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dashboard_screen.dart';
+import '../screens/main_shell.dart';
+import '../services/session_manager.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,51 +14,43 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
-  String? _error;
 
-  @override
-  void initState() {
-    super.initState();
-
-    // 🔁 Listen to Supabase auth state changes to auto-navigate
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final session = data.session;
-      if (session != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
-      }
-    });
-  }
-
-  Future<void> _signIn() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _login() async {
+    setState(() => _loading = true);
 
     try {
       final response = await Supabase.instance.client.auth.signInWithPassword(
         email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        password: _passwordController.text,
       );
 
       final session = response.session;
-      if (session != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
+
+      if (session != null) {
+        // 🔐 Save session locally for persistence
+        await SessionManager().saveSession(session);
+
+        // 🧭 Navigate to adaptive dashboard
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainShell()),
+          );
+        }
       } else {
-        setState(() => _error = 'Échec de la connexion. Vérifiez vos identifiants.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Échec de la connexion — vérifiez vos identifiants."),
+          ),
+        );
       }
-    } on AuthException catch (e) {
-      setState(() => _error = e.message);
     } catch (e) {
-      setState(() => _error = 'Erreur: $e');
+      debugPrint("Erreur de connexion : $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erreur : $e")),
+      );
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -71,9 +64,8 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                'Connexion à la plateforme de maintenance',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+                "Connexion CMMS",
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 32),
               TextField(
@@ -82,31 +74,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   labelText: 'Adresse e-mail',
                   border: OutlineInputBorder(),
                 ),
+                keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passwordController,
-                obscureText: true,
                 decoration: const InputDecoration(
                   labelText: 'Mot de passe',
                   border: OutlineInputBorder(),
                 ),
+                obscureText: true,
               ),
               const SizedBox(height: 24),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: _loading ? null : _signIn,
+                  onPressed: _loading ? null : _login,
                   child: _loading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('Se connecter'),
