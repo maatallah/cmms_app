@@ -5,7 +5,7 @@ import '../screens/main_shell.dart';
 import '../models/auth_response.dart' as local_model; // Prefix to avoid collision
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();

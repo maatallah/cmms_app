@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AssetDetailsScreen extends StatefulWidget {
   final int assetId;
-
   const AssetDetailsScreen({super.key, required this.assetId});
 
   @override
@@ -19,14 +18,14 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAsset();
+    _loadAssetDetails();
   }
 
-  Future<void> _loadAsset() async {
+  Future<void> _loadAssetDetails() async {
     try {
       final response = await _supabase
           .from('assets')
-          .select()
+          .select('*')
           .eq('id', widget.assetId)
           .single();
 
@@ -52,7 +51,6 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Détails équipement')),
         body: Center(
           child: Text(
             'Erreur : $_error',
@@ -64,43 +62,35 @@ class _AssetDetailsScreenState extends State<AssetDetailsScreen> {
 
     if (_asset == null) {
       return const Scaffold(
-        body: Center(child: Text('Aucun détail disponible.')),
+        body: Center(child: Text('Aucun détail trouvé pour cet équipement.')),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_asset!['name'] ?? 'Équipement'),
+        title: Text(_asset!['name'] ?? 'Détails de l’équipement'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ListView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailRow('ID', _asset!['id'].toString()),
-            _buildDetailRow('Nom', _asset!['name']),
-            _buildDetailRow('Emplacement', _asset!['location']),
-            _buildDetailRow('Statut', _asset!['status']),
-            _buildDetailRow('Date d’ajout', _asset!['created_at']),
+            Text(
+              _asset!['name'] ?? 'Sans nom',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Emplacement : ${_asset!['location'] ?? 'Inconnu'}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Description : ${_asset!['description'] ?? 'Aucune description'}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$label : ',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Expanded(
-            child: Text(value ?? '—'),
-          ),
-        ],
       ),
     );
   }

@@ -23,7 +23,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   Future<void> _loadAssets() async {
     try {
-      final response = await _supabase.from('assets').select();
+      final response = await _supabase.from('assets').select('*');
 
       setState(() {
         _assets = (response as List).cast<Map<String, dynamic>>();
@@ -40,20 +40,26 @@ class _AssetsScreenState extends State<AssetsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_error != null) {
-      return Center(
-        child: Text(
-          'Erreur : $_error',
-          style: const TextStyle(color: Colors.red),
+      return Scaffold(
+        body: Center(
+          child: Text(
+            'Erreur : $_error',
+            style: const TextStyle(color: Colors.red),
+          ),
         ),
       );
     }
 
     if (_assets.isEmpty) {
-      return const Center(child: Text('Aucun équipement trouvé.'));
+      return const Scaffold(
+        body: Center(child: Text('Aucun équipement trouvé.')),
+      );
     }
 
     return Scaffold(
@@ -72,7 +78,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AssetDetailsScreen(assetId: asset['id']),
+                  builder: (context) => AssetDetailsScreen(
+                    assetId: int.tryParse(asset['id'].toString()) ?? 0,
+                  ),
                 ),
               );
             },

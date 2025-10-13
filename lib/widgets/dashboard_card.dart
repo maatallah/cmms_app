@@ -32,7 +32,7 @@ class DashboardCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.15),
+                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
                 child: Icon(
                   icon,
                   size: 28,
@@ -54,7 +54,7 @@ class DashboardCard extends StatelessWidget {
                     Text(
                       '$count élément${count > 1 ? 's' : ''}',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
