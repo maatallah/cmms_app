@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cmms_app/services/supabase_service.dart';
-import 'package:cmms_app/models/asset.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'asset_details_screen.dart';
 
 class AssetsScreen extends StatefulWidget {
   const AssetsScreen({super.key});
@@ -10,48 +10,69 @@ class AssetsScreen extends StatefulWidget {
 }
 
 class _AssetsScreenState extends State<AssetsScreen> {
-  late Future<List<Asset>> _assetsFuture;
+  final SupabaseClient _supabase = Supabase.instance.client;
+  List<Map<String, dynamic>> _assets = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _assetsFuture = SupabaseService().getAssets();
+    _loadAssets();
+  }
+
+  Future<void> _loadAssets() async {
+    try {
+      final response = await _supabase.from('assets').select();
+
+      setState(() {
+        _assets = (response as List).cast<Map<String, dynamic>>();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Text(
+          'Erreur : $_error',
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+
+    if (_assets.isEmpty) {
+      return const Center(child: Text('Aucun équipement trouvé.'));
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Équipements"),
+        title: const Text('Équipements'),
       ),
-      body: FutureBuilder<List<Asset>>(
-        future: _assetsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text("Erreur : ${snapshot.error}"));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Aucun équipement trouvé."));
-          }
-
-          final assets = snapshot.data!;
-          return ListView.separated(
-            itemCount: assets.length,
-            separatorBuilder: (_, __) => const Divider(),
-            itemBuilder: (context, index) {
-              final asset = assets[index];
-              return ListTile(
-                leading: const Icon(Icons.build_circle, color: Colors.blue),
-                title: Text(asset.name),
-                subtitle: Text(
-                  "${asset.manufacturer ?? 'N/A'} - ${asset.model ?? 'N/A'}",
-                ),
-                trailing: Text(
-                  "Achat: ${asset.purchaseDate?.toString().split(' ').first ?? '-'}",
-                  style: const TextStyle(fontSize: 12),
+      body: ListView.builder(
+        itemCount: _assets.length,
+        itemBuilder: (context, index) {
+          final asset = _assets[index];
+          return ListTile(
+            title: Text(asset['name'] ?? 'Sans nom'),
+            subtitle: Text(asset['location'] ?? 'Emplacement inconnu'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AssetDetailsScreen(assetId: asset['id']),
                 ),
               );
             },
