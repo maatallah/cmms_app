@@ -1,66 +1,61 @@
 import 'package:flutter/material.dart';
 
 class DashboardCard extends StatelessWidget {
-  final String title;
-  final int count;
   final IconData icon;
+  final String title;
+  final String value;
+  final Color color;
   final VoidCallback onTap;
 
   const DashboardCard({
     super.key,
-    required this.title,
-    required this.count,
     required this.icon,
+    required this.title,
+    required this.value,
+    required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return GestureDetector(
       onTap: onTap,
       child: Card(
-        elevation: 4,
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        elevation: 3,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
+        color: color.withOpacity(0.15),
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 28,
-                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
-                child: Icon(
-                  icon,
-                  size: 28,
-                  color: theme.colorScheme.primary,
-                ),
+                radius: 24,
+                backgroundColor: color.withOpacity(0.25),
+                child: Icon(icon, color: color, size: 28),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
-                      '$count élément${count > 1 ? 's' : ''}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
+                      value,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 18),
+              const Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),
         ),
