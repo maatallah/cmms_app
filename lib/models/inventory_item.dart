@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 class InventoryItem {
   final String id;

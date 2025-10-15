@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'asset_details_screen.dart';
+import '../models/asset_model.dart';
 
 class AssetsScreen extends StatefulWidget {
   const AssetsScreen({super.key});
@@ -11,7 +12,7 @@ class AssetsScreen extends StatefulWidget {
 
 class _AssetsScreenState extends State<AssetsScreen> {
   final SupabaseClient _supabase = Supabase.instance.client;
-  List<Map<String, dynamic>> _assets = [];
+  List<Asset> _assets = [];
   bool _isLoading = true;
   String? _error;
 
@@ -23,10 +24,11 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
   Future<void> _loadAssets() async {
     try {
-      final response = await _supabase.from('assets').select('*');
+      final response = await _supabase.from('assets').select();
 
+      final data = response as List<dynamic>;
       setState(() {
-        _assets = (response as List).cast<Map<String, dynamic>>();
+        _assets = data.map((item) => Asset.fromMap(item as Map<String, dynamic>)).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -47,6 +49,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
 
     if (_error != null) {
       return Scaffold(
+        appBar: AppBar(title: const Text('Équipements')),
         body: Center(
           child: Text(
             'Erreur : $_error',
@@ -57,8 +60,9 @@ class _AssetsScreenState extends State<AssetsScreen> {
     }
 
     if (_assets.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text('Aucun équipement trouvé.')),
+      return Scaffold(
+        appBar: AppBar(title: const Text('Équipements')),
+        body: const Center(child: Text('Aucun équipement trouvé.')),
       );
     }
 
@@ -71,16 +75,14 @@ class _AssetsScreenState extends State<AssetsScreen> {
         itemBuilder: (context, index) {
           final asset = _assets[index];
           return ListTile(
-            title: Text(asset['name'] ?? 'Sans nom'),
-            subtitle: Text(asset['location'] ?? 'Emplacement inconnu'),
+            title: Text(asset.name),
+            subtitle: Text(asset.model ?? 'Modèle inconnu'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AssetDetailsScreen(
-                    assetId: int.tryParse(asset['id'].toString()) ?? 0,
-                  ),
+                  builder: (context) => AssetDetailsScreen(assetId: asset.id),
                 ),
               );
             },
